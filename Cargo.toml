@@ -1,0 +1,13 @@
+[package]
+name = "endicon"
+version = "1.0.0"
+authors = ["Nathaniel McCallum <npmccallum@redhat.com>"]
+keywords = ["codec", "encoding", "decoding", "endianness", "endian"]
+repository = "https://github.com/psilocybin/endicon"
+description = "Implementations of codicon traits for endianness encodings"
+documentation = "https://docs.rs/endicon"
+license = "Apache-2.0"
+readme = "README.md"
+
+[dependencies]
+codicon = "1.0.0"
