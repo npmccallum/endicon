@@ -59,117 +59,155 @@ pub enum Endianness {
     Big
 }
 
+trait FloatEndian<T> {
+    fn to_le(self) -> T;
+    fn to_be(self) -> T;
+}
+
 macro_rules! end_impl {
-    ($($t:ident)+) => (
-        $(
-            impl Decoder<Endianness> for $t {
-                fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
-                    let mut bytes = [0u8; size_of::<$t>()];
-                    reader.read_exact(&mut bytes)?;
+    () => ();
 
-                    let value = unsafe { transmute(bytes) };
+    ($t:ident:$i:ident $($rest:tt)*) => (
+        impl Decoder<Endianness> for $t {
+            fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
+                Ok($t::from_bits($i::decode(reader, params)?))
+            }
+        }
 
-                    Ok(match params {
-                        Endianness::Native => value,
-                        Endianness::Little => $t::from_le(value),
-                        Endianness::Big => $t::from_be(value),
-                    })
+        impl Encoder<Endianness> for $t {
+            fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
+                self.to_bits().encode(writer, params)
+            }
+        }
+
+        impl FloatEndian<$i> for $t {
+            fn to_le(self) -> $i {
+                self.to_bits().to_le()
+            }
+
+            fn to_be(self) -> $i {
+                self.to_bits().to_be()
+            }
+        }
+
+        end_impl!(!$t);
+        end_impl!($($rest)*);
+    );
+
+    ($t:ident $($rest:tt)*) => (
+        impl Decoder<Endianness> for $t {
+            fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
+                let mut bytes = [0u8; size_of::<$t>()];
+                reader.read_exact(&mut bytes)?;
+
+                let value = unsafe { transmute(bytes) };
+
+                Ok(match params {
+                    Endianness::Native => value,
+                    Endianness::Little => $t::from_le(value),
+                    Endianness::Big => $t::from_be(value),
+                })
+            }
+        }
+
+        impl Encoder<Endianness> for $t {
+            fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
+                let v = match params {
+                    Endianness::Native => *self,
+                    Endianness::Little => self.to_le(),
+                    Endianness::Big => self.to_be(),
+                };
+
+                let bytes: [u8; size_of::<Self>()] = unsafe { transmute(v) };
+                writer.write_all(&bytes)?;
+                Ok(())
+            }
+        }
+
+        end_impl!(!$t);
+        end_impl!($($rest)*);
+    );
+
+    (!$t:ident) => (
+        #[cfg(test)]
+        mod $t {
+            mod ne {
+                use std::mem::{size_of, transmute};
+                use codicon::{Decoder, Encoder};
+                use super::super::Endianness::*;
+
+                const S: usize = size_of::<$t>();
+                const V: $t = 1 as $t;
+
+                #[test]
+                fn enc() {
+                    let e: [u8; S] = unsafe { transmute(V) };
+                    let mut x = [0u8; S];
+                    V.encode(&mut x.as_mut(), Native).unwrap();
+                    assert_eq!(x, e);
+                }
+
+                #[test]
+                fn dec() {
+                    let e: [u8; S] = unsafe { transmute(V) };
+                    let x = $t::decode(&mut e.as_ref(), Native).unwrap();
+                    assert_eq!(x, V);
                 }
             }
-            
-            impl Encoder<Endianness> for $t {
-                fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
-                    let v = match params {
-                        Endianness::Native => *self,
-                        Endianness::Little => self.to_le(),
-                        Endianness::Big => self.to_be(),
-                    };
 
-                    let bytes: [u8; size_of::<Self>()] = unsafe { transmute(v) };
-                    writer.write_all(&bytes)?;
-                    Ok(())
+            mod le {
+                use std::mem::{size_of, transmute};
+                use codicon::{Decoder, Encoder};
+                use super::super::*;
+
+                const S: usize = size_of::<$t>();
+                const V: $t = 1 as $t;
+
+                #[test]
+                fn enc() {
+                    let e: [u8; S] = unsafe { transmute(V.to_le()) };
+                    let mut x = [0u8; S];
+                    V.encode(&mut x.as_mut(), Endianness::Little).unwrap();
+                    assert_eq!(x, e);
+                }
+
+                #[test]
+                fn dec() {
+                    let e: [u8; S] = unsafe { transmute(V.to_le()) };
+                    let x = $t::decode(&mut e.as_ref(), Endianness::Little).unwrap();
+                    assert_eq!(x, V);
                 }
             }
-            
-            #[cfg(test)]
-            mod $t {
-                mod ne {
-                    use std::mem::{size_of, transmute};
-                    use codicon::{Decoder, Encoder};
-                    use super::super::Endianness::*;
-                    
-                    const S: usize = size_of::<$t>();
-                    const V: $t = 1;
 
-                    #[test]
-                    fn enc() {
-                        let e: [u8; S] = unsafe { transmute(V) };
-                        let mut x = [0u8; S];
-                        V.encode(&mut x.as_mut(), Native).unwrap();
-                        assert_eq!(x, e);
-                    }
-                    
-                    #[test]
-                    fn dec() {
-                        let e: [u8; S] = unsafe { transmute(V) };
-                        let x = $t::decode(&mut e.as_ref(), Native).unwrap();
-                        assert_eq!(x, V);
-                    }
-                }
-                
-                mod le {
-                    use std::mem::{size_of, transmute};
-                    use codicon::{Decoder, Encoder};
-                    use super::super::Endianness::*;
-                    
-                    const S: usize = size_of::<$t>();
-                    const V: $t = 1;
+            mod be {
+                use std::mem::{size_of, transmute};
+                use codicon::{Decoder, Encoder};
+                use super::super::*;
 
-                    #[test]
-                    fn enc() {
-                        let e: [u8; S] = unsafe { transmute(V.to_le()) };
-                        let mut x = [0u8; S];
-                        V.encode(&mut x.as_mut(), Little).unwrap();
-                        assert_eq!(x, e);
-                    }
-                    
-                    #[test]
-                    fn dec() {
-                        let e: [u8; S] = unsafe { transmute(V.to_le()) };
-                        let x = $t::decode(&mut e.as_ref(), Little).unwrap();
-                        assert_eq!(x, V);
-                    }
-                }
-                
-                mod be {
-                    use std::mem::{size_of, transmute};
-                    use codicon::{Decoder, Encoder};
-                    use super::super::Endianness::*;
-                    
-                    const S: usize = size_of::<$t>();
-                    const V: $t = 1;
+                const S: usize = size_of::<$t>();
+                const V: $t = 1 as $t;
 
-                    #[test]
-                    fn enc() {
-                        let e: [u8; S] = unsafe { transmute(V.to_be()) };
-                        let mut x = [0u8; S];
-                        V.encode(&mut x.as_mut(), Big).unwrap();
-                        assert_eq!(x, e);
-                    }
-                    
-                    #[test]
-                    fn dec() {
-                        let e: [u8; S] = unsafe { transmute(V.to_be()) };
-                        let x = $t::decode(&mut e.as_ref(), Big).unwrap();
-                        assert_eq!(x, V);
-                    }
+                #[test]
+                fn enc() {
+                    let e: [u8; S] = unsafe { transmute(V.to_be()) };
+                    let mut x = [0u8; S];
+                    V.encode(&mut x.as_mut(), Endianness::Big).unwrap();
+                    assert_eq!(x, e);
                 }
-            }            
-        )+
-    )
+
+                #[test]
+                fn dec() {
+                    let e: [u8; S] = unsafe { transmute(V.to_be()) };
+                    let x = $t::decode(&mut e.as_ref(), Endianness::Big).unwrap();
+                    assert_eq!(x, V);
+                }
+            }
+        }
+    );
 }
 
 end_impl! {
     usize u128 u64 u32 u16 u8
     isize i128 i64 i32 i16 i8
+    f64:u64 f32:u32
 }
