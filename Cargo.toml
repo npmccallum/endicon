@@ -1,6 +1,6 @@
 [package]
 name = "endicon"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Nathaniel McCallum <npmccallum@redhat.com>"]
 keywords = ["codec", "encoding", "decoding", "endianness", "endian"]
 repository = "https://github.com/psilocybin/endicon"
