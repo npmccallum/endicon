@@ -48,6 +48,7 @@ use std::mem::{size_of, transmute};
 use std::io;
 
 /// Endianness to use during encoding/decoding.
+#[derive(Copy, Clone, Debug)]
 pub enum Endianness {
     /// Encode/decode using the CPU's native endianness.
     Native,
