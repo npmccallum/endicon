@@ -44,7 +44,6 @@ extern crate codicon;
 
 use codicon::{Decoder, Encoder};
 
-use std::mem::{size_of, transmute};
 use std::io;
 
 /// Endianness to use during encoding/decoding.
@@ -98,28 +97,25 @@ macro_rules! end_impl {
     ($t:ident $($rest:tt)*) => (
         impl Decoder<Endianness> for $t {
             fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
-                let mut bytes = [0u8; size_of::<$t>()];
+                let mut bytes = $t::default().to_ne_bytes();
                 reader.read_exact(&mut bytes)?;
 
-                let value = unsafe { transmute(bytes) };
-
                 Ok(match params {
-                    Endianness::Native => value,
-                    Endianness::Little => $t::from_le(value),
-                    Endianness::Big => $t::from_be(value),
+                    Endianness::Native => $t::from_ne_bytes(bytes),
+                    Endianness::Little => $t::from_le_bytes(bytes),
+                    Endianness::Big => $t::from_be_bytes(bytes),
                 })
             }
         }
 
         impl Encoder<Endianness> for $t {
             fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
-                let v = match params {
-                    Endianness::Native => *self,
-                    Endianness::Little => self.to_le(),
-                    Endianness::Big => self.to_be(),
+                let bytes = match params {
+                    Endianness::Native => self.to_ne_bytes(),
+                    Endianness::Little => self.to_le_bytes(),
+                    Endianness::Big => self.to_be_bytes(),
                 };
 
-                let bytes: [u8; size_of::<Self>()] = unsafe { transmute(v) };
                 writer.write_all(&bytes)?;
                 Ok(())
             }
