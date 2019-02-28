@@ -69,13 +69,15 @@ macro_rules! end_impl {
 
     ($t:ident:$i:ident $($rest:tt)*) => (
         impl Decoder<Endianness> for $t {
-            fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
+            type Error = io::Error;
+            fn decode(reader: &mut impl io::Read, params: Endianness) -> io::Result<Self> {
                 Ok($t::from_bits($i::decode(reader, params)?))
             }
         }
 
         impl Encoder<Endianness> for $t {
-            fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
+            type Error = io::Error;
+            fn encode(&self, writer: &mut impl io::Write, params: Endianness) -> io::Result<()> {
                 self.to_bits().encode(writer, params)
             }
         }
@@ -96,7 +98,8 @@ macro_rules! end_impl {
 
     ($t:ident $($rest:tt)*) => (
         impl Decoder<Endianness> for $t {
-            fn decode<R: io::Read>(reader: &mut R, params: Endianness) -> io::Result<Self> {
+            type Error = io::Error;
+            fn decode(reader: &mut impl io::Read, params: Endianness) -> io::Result<Self> {
                 let mut bytes = $t::default().to_ne_bytes();
                 reader.read_exact(&mut bytes)?;
 
@@ -109,7 +112,8 @@ macro_rules! end_impl {
         }
 
         impl Encoder<Endianness> for $t {
-            fn encode<W: io::Write>(&self, writer: &mut W, params: Endianness) -> io::Result<()> {
+            type Error = io::Error;
+            fn encode(&self, writer: &mut impl io::Write, params: Endianness) -> io::Result<()> {
                 let bytes = match params {
                     Endianness::Native => self.to_ne_bytes(),
                     Endianness::Little => self.to_le_bytes(),

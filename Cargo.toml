@@ -10,4 +10,4 @@ license = "Apache-2.0"
 readme = "README.md"
 
 [dependencies]
-codicon = "1.0.0"
+codicon = "2.0.0"
