@@ -10,5 +10,13 @@ license = "Apache-2.0"
 readme = "README.md"
 edition = "2018"
 
+[badges]
+# See https://doc.rust-lang.org/cargo/reference/manifest.html#the-badges-section
+github = { repository = "enarx/endicon", workflow = "test" }
+#github = { repository = "enarx/endicon", workflow = "lint" }
+maintenance = { status = "actively-developed" }
+is-it-maintained-issue-resolution = { repository = "enarx/endicon" }
+is-it-maintained-open-issues = { repository = "enarx/endicon" }
+
 [dependencies]
 codicon = "3.0"
