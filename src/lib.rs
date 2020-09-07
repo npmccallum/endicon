@@ -7,9 +7,6 @@
 //! # Examples
 //!
 //! ```rust
-//! extern crate codicon;
-//! extern crate endicon;
-//!
 //! use endicon::Endianness;
 //! use codicon::Encoder;
 //!
@@ -24,21 +21,19 @@
 //! assert_eq!(bytes, big);
 //! ```
 
-extern crate codicon;
+use std::io::{Error, Result};
 
-use codicon::{Decoder, Encoder};
-
-use std::io;
+use codicon::*;
 
 /// Endianness to use during encoding/decoding.
 #[derive(Copy, Clone, Debug)]
 pub enum Endianness {
     /// Encode/decode using the CPU's native endianness.
     Native,
-    
+
     /// Encode/decode using little endianness.
     Little,
-    
+
     /// Encode/decode using big endianness.
     Big
 }
@@ -53,15 +48,17 @@ macro_rules! end_impl {
 
     ($t:ident:$i:ident $($rest:tt)*) => (
         impl Decoder<Endianness> for $t {
-            type Error = io::Error;
-            fn decode(reader: &mut impl io::Read, params: Endianness) -> io::Result<Self> {
+            type Error = Error;
+
+            fn decode(reader: impl Read, params: Endianness) -> Result<Self> {
                 Ok($t::from_bits($i::decode(reader, params)?))
             }
         }
 
         impl Encoder<Endianness> for $t {
-            type Error = io::Error;
-            fn encode(&self, writer: &mut impl io::Write, params: Endianness) -> io::Result<()> {
+            type Error = Error;
+
+            fn encode(&self, writer: impl Write, params: Endianness) -> Result<()> {
                 self.to_bits().encode(writer, params)
             }
         }
@@ -82,8 +79,9 @@ macro_rules! end_impl {
 
     ($t:ident $($rest:tt)*) => (
         impl Decoder<Endianness> for $t {
-            type Error = io::Error;
-            fn decode(reader: &mut impl io::Read, params: Endianness) -> io::Result<Self> {
+            type Error = Error;
+
+            fn decode(mut reader: impl Read, params: Endianness) -> Result<Self> {
                 let mut bytes = $t::default().to_ne_bytes();
                 reader.read_exact(&mut bytes)?;
 
@@ -96,8 +94,9 @@ macro_rules! end_impl {
         }
 
         impl Encoder<Endianness> for $t {
-            type Error = io::Error;
-            fn encode(&self, writer: &mut impl io::Write, params: Endianness) -> io::Result<()> {
+            type Error = Error;
+
+            fn encode(&self, mut writer: impl Write, params: Endianness) -> Result<()> {
                 let bytes = match params {
                     Endianness::Native => self.to_ne_bytes(),
                     Endianness::Little => self.to_le_bytes(),

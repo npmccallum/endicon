@@ -8,6 +8,7 @@ description = "Implementations of codicon traits for endianness encodings"
 documentation = "https://docs.rs/endicon"
 license = "Apache-2.0"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
-codicon = "2.0.0"
+codicon = "3.0"
