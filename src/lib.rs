@@ -25,17 +25,17 @@ use std::io::{Error, Result};
 
 use codicon::*;
 
-/// Endianness to use during encoding/decoding.
+/// Endianness to use during encoding/decoding
 #[derive(Copy, Clone, Debug)]
 pub enum Endianness {
-    /// Encode/decode using the CPU's native endianness.
+    /// CPU-native endian
     Native,
 
-    /// Encode/decode using little endianness.
+    /// Little endian
     Little,
 
-    /// Encode/decode using big endianness.
-    Big
+    /// Big endianness
+    Big,
 }
 
 trait FloatEndian<T> {
